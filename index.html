@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Générateur de Prompts Satisfaisants - AI Short Lab</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Markdown parsing for AI responses if needed -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        dark: '#0f172a',
+                        card: '#1e293b',
+                        accent: '#38bdf8',
+                        success: '#22c55e',
+                        gemini: '#8b5cf6' // Purple for AI features
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #e2e8f0; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .prompt-card { transition: all 0.2s; }
+        .prompt-card:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+        /* Animation pour le nouveau contenu */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        
+        /* Loading Spinner */
+        .spinner {
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top: 3px solid #fff;
+            width: 20px;
+            height: 20px;
+            -webkit-animation: spin 1s linear infinite; /* Safari */
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Gemini Gradient Text */
+        .text-gradient-gemini {
+            background: linear-gradient(to right, #38bdf8, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <header class="bg-card border-b border-gray-700 p-4 shadow-lg z-10">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-accent rounded-lg flex items-center justify-center text-dark font-bold text-xl shadow-lg shadow-sky-900/20">
+                    <i class="fa-solid fa-shuffle"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-white tracking-tight">Générateur Aléatoire <span class="text-xs bg-gemini/20 text-gemini border border-gemini/50 px-2 py-0.5 rounded ml-2">AI Powered</span></h1>
+                    <p class="text-xs text-gray-400">Pour <span class="text-accent">@aishortlab</span> • Génération unique par appareil</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <div class="hidden md:flex bg-dark px-4 py-2 rounded-lg border border-gray-600 text-sm">
+                    <span id="count-display" class="font-mono text-accent">0</span>&nbsp;prompts générés
+                </div>
+                <button onclick="downloadPrompts()" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2 border border-gray-600">
+                    <i class="fa-solid fa-download"></i> <span class="hidden sm:inline">.txt</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-y-auto p-4 scrollbar-hide bg-gradient-to-b from-dark to-[#0b1120]">
+        <div class="max-w-7xl mx-auto">
+            
+            <!-- Controls Toolbar -->
+            <div class="mb-8 bg-card/80 backdrop-blur-md p-4 rounded-2xl border border-gray-700 shadow-xl">
+                <div class="flex flex-col md:flex-row gap-6 items-center justify-between">
+                    
+                    <!-- Quantity Selector -->
+                    <div class="flex flex-col gap-2 w-full md:w-auto">
+                        <label class="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                            <i class="fa-solid fa-hashtag"></i> Quantité
+                        </label>
+                        <div class="flex flex-wrap gap-2">
+                            <button onclick="setQuantity(10)" class="qty-btn bg-dark hover:bg-gray-700 border border-gray-600 text-gray-300 px-4 py-2 rounded-lg text-sm font-medium transition-all" data-value="10">10</button>
+                            <button onclick="setQuantity(50)" class="qty-btn bg-dark hover:bg-gray-700 border border-gray-600 text-gray-300 px-4 py-2 rounded-lg text-sm font-medium transition-all" data-value="50">50</button>
+                            <button onclick="setQuantity(100)" class="qty-btn bg-dark hover:bg-gray-700 border border-gray-600 text-gray-300 px-4 py-2 rounded-lg text-sm font-medium transition-all" data-value="100">100</button>
+                            <button onclick="setQuantity(300)" class="qty-btn bg-accent text-dark border border-accent font-bold px-4 py-2 rounded-lg text-sm transition-all shadow-[0_0_15px_rgba(56,189,248,0.3)]" data-value="300">300</button>
+                            
+                            <div class="relative flex items-center ml-2">
+                                <input type="number" id="custom-qty" placeholder="Perso" min="1" max="1000" class="w-20 bg-dark border border-gray-600 text-white px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all" oninput="selectCustom()">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="flex flex-col md:flex-row gap-3 w-full md:w-auto">
+                        <!-- AI Button -->
+                        <button onclick="generateAIUniquePrompt()" id="ai-btn" class="relative group overflow-hidden bg-dark border border-gemini/50 text-white font-bold py-3 px-6 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 hover:border-gemini hover:shadow-[0_0_20px_rgba(139,92,246,0.3)]">
+                            <div class="absolute inset-0 bg-gradient-to-r from-transparent via-gemini/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                            <i class="fa-solid fa-wand-magic-sparkles text-gemini group-hover:text-white transition-colors"></i>
+                            <span>Scénario Unique (IA)</span>
+                            <div id="ai-spinner" class="spinner hidden ml-2"></div>
+                        </button>
+
+                        <!-- Standard Generate Button -->
+                        <button onclick="generatePrompts()" class="bg-gradient-to-r from-accent to-blue-500 hover:from-sky-400 hover:to-blue-400 text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-sky-900/40 transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-3">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                            Générer Aléatoire
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Error Message Container -->
+            <div id="error-container" class="hidden mb-6 bg-red-500/10 border border-red-500/50 text-red-200 p-4 rounded-xl text-sm animate-fade-in flex items-center gap-3">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                <span id="error-message"></span>
+            </div>
+
+            <!-- Grid -->
+            <div id="prompts-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-10">
+                <!-- Content injected by JS -->
+            </div>
+        </div>
+    </main>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-4 right-4 bg-success text-white px-6 py-3 rounded-lg shadow-2xl transform translate-y-20 transition-transform duration-300 flex items-center gap-3 z-50 font-bold border border-green-400/50 backdrop-blur-sm">
+        <i class="fa-solid fa-check-circle"></i>
+        <span id="toast-message">Copié !</span>
+    </div>
+
+    <script>
+        // --- GEMINI API CONFIGURATION ---
+        const apiKey = ""; // Set by environment
+        const model = "gemini-2.5-flash-preview-09-2025";
+
+        // --- APP STATE ---
+        let currentQuantity = 300;
+        let generatedPrompts = [];
+
+        // --- DATA ENGINE (Objects List) ---
+        const objects = [
+            { name: "whole watermelon", material: "thin-walled transparent glass tinted green", interior: "delicate pink crystal interior", tool: "heavy silver spoon", action: "cracks the rind", debris: "glittering glass shards" },
+            { name: "bar of lavender soap", material: "dry, chalky pastel purple soap", interior: "smooth, uniform grain", tool: "sharp utility knife", action: "slices thin grid cubes", debris: "perfect geometric cubes" },
+            { name: "red apple", material: "fragile sugar glass filled with red smoke", interior: "hollow space with swirling gas", tool: "needle", action: "pricks the surface", debris: "large curved fragments" },
+            { name: "Rubik's cube", material: "wobbling translucent agar jelly", interior: "cloudy gelatinous core", tool: "chef's knife", action: "slices diagonally", debris: "jiggly jelly slices" },
+            { name: "Nike sneaker", material: "soft aerated strawberry mousse", interior: "bubbly pink sponge texture", tool: "hot metal knife", action: "melts through the toe box", debris: "dripping glaze and foam" },
+            { name: "gold bar", material: "hardened chocolate shell painted gold", interior: "rich flowing caramel", tool: "hammer", action: "smashes the top", debris: "chocolate flakes and gold dust" },
+            { name: "floral foam block", material: "green foam saturated with water and glitter", interior: "dense water-filled pores", tool: "human hand", action: "crushes it tight", debris: "gushing water and glitter" },
+            { name: "lightbulb", material: "extremely thin brittle sugar glass", interior: "colorful nonpareil sprinkles", tool: "pliers", action: "squeezes the glass", debris: "rainbow sprinkles cascading" },
+            { name: "ball of aluminum foil", material: "polished foil mirror finish", interior: "soft dark chocolate ganache", tool: "sharp knife", action: "slices through the center", debris: "metallic foil peels" },
+            { name: "cactus plant", material: "piped green buttercream frosting", interior: "moist chocolate brownie", tool: "spoon", action: "scoops out a chunk", debris: "creamy smears" },
+            { name: "diamond", material: "carved clear ice", interior: "internal fracture lines", tool: "blowtorch", action: "melts the facets", debris: "streaming water droplets" },
+            { name: "stack of wax discs", material: "rainbow colored paraffin wax", interior: "layered wax gradients", tool: "hydraulic press", action: "flattens the stack", debris: "squished wax ribbons" },
+            { name: "iPhone 15", material: "tempered chocolate with gold dust", interior: "hazelnut praline filling", tool: "human teeth", action: "bites the corner", debris: "snapped chocolate pieces" },
+            { name: "cereal bowl", material: "white glossy slime (milk)", interior: "styrofoam loops", tool: "spoon", action: "mixes the contents", debris: "stretchy slime strands" },
+            { name: "game controller", material: "translucent blue raspberry gummy", interior: "solid gummy texture", tool: "fingers", action: "twists the handles", debris: "no debris but elastic snapping" },
+            { name: "pumpkin", material: "thin orange glass", interior: "hollow space", tool: "steel ball bearing", action: "drops onto it", debris: "imploding orange shards" },
+            { name: "brain candle", material: "pink wax with anatomical texture", interior: "soft white wax", tool: "wire cutter", action: "slices through the lobes", debris: "curled wax peels" },
+            { name: "tennis ball", material: "matcha sponge cake", interior: "white cream center", tool: "serrated knife", action: "saws in half", debris: "green cake crumbs" },
+            { name: "frozen paint block", material: "hundreds of acrylic paint layers", interior: "rainbow gradient strata", tool: "wood plane", action: "shaves the top", debris: "long colorful paint ribbons" },
+            { name: "cherry", material: "deep red glass", interior: "solid red glass", tool: "metal vice", action: "crushes it slowly", debris: "fine red glass powder" },
+            { name: "soda can", material: "transparent red isomalt sugar", interior: "sticky sugar structure", tool: "hand", action: "squeezes the can", debris: "sticky sugar shards" },
+            { name: "avocado", material: "dark green glass with textured skin", interior: "frosted green glass flesh", tool: "knife", action: "pops out the glass pit", debris: "glass-on-glass scraping dust" },
+            { name: "kitchen sponge", material: "frozen sponge with neon paint", interior: "ice crystals and paint", tool: "serrated knife", action: "saws through", debris: "colorful slushy ice" },
+            { name: "wooden log", material: "chocolate swiss roll cake", interior: "spiral of cream and sponge", tool: "cleaver", action: "chops the end", debris: "chocolate bark flakes" },
+            { name: "balloon", material: "latex filled with non-newtonian fluid", interior: "solid-then-liquid white goop", tool: "fist", action: "punches then sinks in", debris: "rippling fluid surface" },
+            { name: "lemon", material: "thin yellow glass", interior: "hollow yellow tint", tool: "juicer", action: "presses down", debris: "yellow glass dust" },
+            { name: "giant gummy bear", material: "red translucent gelatin", interior: "glowing red jelly", tool: "large knife", action: "slices the face off", debris: "wobbling jelly slice" },
+            { name: "gold bullion", material: "soft butter painted gold", interior: "pale yellow butter", tool: "butter knife", action: "scrapes the top", debris: "gold butter curls" },
+            { name: "sand hand", material: "grey kinetic sand", interior: "compressed sand grains", tool: "human hand", action: "shakes it", debris: "crumbling sand pile" },
+            { name: "tomato", material: "red glass with green stem", interior: "empty", tool: "wall", action: "throws it against surface", debris: "explosive red shards" },
+            { name: "chalk sphere", material: "compressed white chalk dust", interior: "dense powder", tool: "fist", action: "crushes it to dust", debris: "cloud of white smoke" },
+            { name: "camera lens", material: "dark chocolate", interior: "thick ganache filling", tool: "warm knife", action: "cuts the barrel", debris: "melted chocolate smear" },
+            { name: "mercury pool", material: "liquid metal simulation", interior: "reflective liquid", tool: "finger", action: "dips into surface", debris: "ripples and droplets" },
+            { name: "zen garden", material: "fine white sand", interior: "soft grains", tool: "rake", action: "drags through patterns", debris: "perfect sand furrows" },
+            { name: "baseball", material: "white chocolate with red stitching", interior: "red velvet cake", tool: "hammer", action: "cracks it open", debris: "white chocolate shell pieces" },
+            { name: "mango", material: "thin orange glass", interior: "neon orange liquid", tool: "knife", action: "slices the cheek", debris: "glowing liquid spill" },
+            { name: "toothpaste coil", material: "frozen tricolored toothpaste", interior: "solid frozen paste", tool: "mallet", action: "smashes it", debris: "minty frozen chunks" },
+            { name: "lipstick", material: "strawberry jelly", interior: "soft gelatin", tool: "paper", action: "presses against it", debris: "squished jelly blob" },
+            { name: "honeycomb", material: "purple paraffin wax", interior: "honey-like wax", tool: "scraper", action: "shaves the cells", debris: "wax rolls" },
+            { name: "kiwi", material: "fuzzy glass skin", interior: "obsidian stone seeds", tool: "knife", action: "cuts in half", debris: "clinking stone seeds" },
+            { name: "water droplet", material: "zero gravity water", interior: "clear liquid", tool: "needle", action: "pokes the surface", debris: "butterflies (surreal)" },
+            { name: "brick", material: "rust-colored kinetic sand", interior: "sand grains", tool: "card", action: "slices wafers", debris: "cascading sand slices" },
+            { name: "pancakes", material: "terry cloth towels", interior: "fabric texture", tool: "motor oil (syrup)", action: "pours over stack", debris: "viscous black liquid" },
+            { name: "dragon fruit", material: "pink glass", interior: "quartz crystal flesh", tool: "knife", action: "slices open", debris: "sparkling crystal dust" },
+            { name: "mud ball", material: "polished dorodango mud", interior: "dry earth", tool: "cloth", action: "polishes surface", debris: "high shine reflection" },
+            { name: "fried egg", material: "gummy candy and mango juice", interior: "liquid mango yolk", tool: "fork", action: "pokes the yolk", debris: "running mango juice" },
+            { name: "glue lattice", material: "dried hot glue strings", interior: "rubber texture", tool: "hand", action: "peels it off glass", debris: "clean separation" },
+            { name: "pomegranate", material: "dark red glass", interior: "glass bead seeds", tool: "floor", action: "drops it", debris: "rolling red glass beads" },
+            { name: "dry ice block", material: "frozen co2", interior: "solid white ice", tool: "warm coin", action: "presses into surface", debris: "sublimating white fog" },
+            { name: "cassette tape", material: "black licorice", interior: "chewy candy", tool: "teeth", action: "bites the side", debris: "teeth marks in candy" },
+            { name: "cotton candy cloud", material: "pink spun sugar", interior: "airy sugar strands", tool: "water spray", action: "mists the cloud", debris: "dissolving sugar drop" },
+            { name: "eggplant", material: "deep purple glass", interior: "hollow", tool: "table", action: "taps against surface", debris: "ringing bell sound" },
+            { name: "slime sphere", material: "clear slime with beads", interior: "styrofoam floam", tool: "hand", action: "squeezes tight", debris: "crunchy bead sounds" },
+            { name: "succulent", material: "piped buttercream", interior: "soft frosting", tool: "finger", action: "squishes a leaf", debris: "flattened cream" },
+            { name: "card tower", material: "tempered chocolate sheets", interior: "thin chocolate", tool: "finger", action: "flicks the bottom card", debris: "shattering chocolate plates" },
+            { name: "corn cob", material: "glass", interior: "glass kernel gems", tool: "knife", action: "scrapes down the cob", debris: "falling glass kernels" },
+            { name: "cheddar block", material: "orange sponge cake", interior: "fluffy cake crumb", tool: "wire cutter", action: "slices through", debris: "soft crumbs" },
+            { name: "paintbrush", material: "dried blue paint", interior: "soluble pigment", tool: "water glass", action: "dips in", debris: "swirling blue smoke" },
+            { name: "geode", material: "rock candy and chocolate", interior: "purple sugar crystals", tool: "chisel", action: "cracks it open", debris: "sparkling sugar shards" },
+            { name: "fig", material: "glass", interior: "cracked ice texture", tool: "hand", action: "squeezes it", debris: "internal fracture lines" },
+            { name: "bowling pins", material: "plastic", interior: "hollow", tool: "bowling ball", action: "strikes them", debris: "flying pins" },
+            { name: "handbag", material: "structured red jelly", interior: "wobbly gelatin", tool: "hand", action: "shakes it", debris: "jiggly movement" },
+            { name: "bubble wrap", material: "plastic air pockets", interior: "air", tool: "mini steam roller", action: "rolls over it", debris: "popped plastic" },
+            { name: "papaya", material: "glass", interior: "black glass bead seeds", tool: "spoon", action: "scoops seeds", debris: "tinkling glass beads" },
+            { name: "instant noodles", material: "dry noodle block", interior: "compressed noodles", tool: "sandpaper", action: "sands the corner", debris: "noodle dust" },
+            { name: "credit card", material: "thin sheet ice", interior: "ice", tool: "hand", action: "flexes it", debris: "snapped ice shards" },
+            { name: "domino spiral", material: "plastic", interior: "solid", tool: "finger", action: "pushes first one", debris: "falling dominoes" },
+            { name: "blueberries", material: "blue glass marbles", interior: "solid glass", tool: "metal bowl", action: "pours them in", debris: "loud clanking sound" },
+            { name: "pin art", material: "metal pins", interior: "metal", tool: "face", action: "presses into pins", debris: "3D impression" },
+            { name: "shoe sole", material: "sticky black gummy", interior: "chewy candy", tool: "scissors", action: "cuts through", debris: "sticky residue" },
+            { name: "smoke balloon", material: "clear latex", interior: "white smoke", tool: "pin", action: "pops it", debris: "perfect smoke sphere" },
+            { name: "chili pepper", material: "red glass", interior: "spicy red glass dust", tool: "hand", action: "snaps in half", debris: "puff of red dust" },
+            { name: "sandcastle", material: "beach sand", interior: "sand", tool: "water bucket", action: "pours over tower", debris: "mudslide" },
+            { name: "wrench", material: "hardened grey chocolate", interior: "chocolate", tool: "bolt", action: "applies torque", debris: "snapped wrench head" },
+            { name: "clay vat", material: "non-drying clay", interior: "smooth clay", tool: "fist", action: "punches deep", debris: "vacuum suction" },
+            { name: "coconut", material: "glass with hairy texture", interior: "real water", tool: "machete", action: "strikes it", debris: "glass shards and water splash" },
+            { name: "sequin wall", material: "reversible sequins", interior: "gold/black", tool: "hand", action: "swipes up", debris: "color change" },
+            { name: "pencil", material: "cake cylinder", interior: "graphite frosting", tool: "sharpener", action: "turns", debris: "cake shavings" },
+            { name: "frozen rose", material: "flower dipped in nitrogen", interior: "frozen petals", tool: "fist", action: "crushes it", debris: "porcelain-like shards" },
+            { name: "bell pepper", material: "red glass", interior: "hollow", tool: "knife", action: "slices top off", debris: "clean glass ring" },
+            { name: "ice cream scoop", material: "kinetic sand", interior: "sand grains", tool: "scoop", action: "digs in", debris: "crumbling sand" },
+            { name: "sushi roll", material: "needle-felted wool", interior: "fuzzy fiber", tool: "knife", action: "cuts", debris: "fibrous wool ends" },
+            { name: "glass sheet", material: "tempered glass", interior: "stress lines", tool: "center punch", action: "taps corner", debris: "waterfall of safety glass" },
+            { name: "onion", material: "glass layers", interior: "concentric rings", tool: "knife", action: "cuts in half", debris: "rocking glass rings" },
+            { name: "nickel ball", material: "red hot metal", interior: "heat", tool: "ice block", action: "places ball on ice", debris: "boiling steam tunnel" },
+            { name: "violin", material: "maple syrup candy", interior: "amber candy", tool: "finger", action: "plucks string", debris: "sticky shattered bridge" },
+            { name: "dusty book", material: "old paper", interior: "dust", tool: "hand", action: "slams shut", debris: "dust cloud in light" },
+            { name: "potato", material: "glass with dirt texture", interior: "clear glass", tool: "peeler", action: "peels skin", debris: "glass ribbons" },
+            { name: "paint balloons", material: "rubber", interior: "liquid paint", tool: "dart", action: "pops center", debris: "chain reaction splatter" },
+            { name: "hamburger", material: "polymer clay", interior: "clay", tool: "hand", action: "squeezes it", debris: "permanent deformation" },
+            { name: "epoxy pool", material: "clear resin", interior: "viscous liquid", tool: "stone", action: "drops in", debris: "thick splash crown" },
+            { name: "mushroom", material: "white glass", interior: "delicate glass gills", tool: "hand", action: "snaps stem", debris: "clean break" },
+            { name: "speaker", material: "rubber sheet", interior: "vibration", tool: "white sand", action: "pours on sheet", debris: "chladni patterns" },
+            { name: "tree bark", material: "dark chocolate", interior: "sponge cake", tool: "hand", action: "peels bark", debris: "snapped chocolate" },
+            { name: "ferrofluid", material: "magnetic liquid", interior: "black oil", tool: "magnet", action: "brings close", debris: "spiky formations" },
+            { name: "starfruit", material: "yellow glass", interior: "solid glass", tool: "knife", action: "slices", debris: "glass stars" },
+            { name: "peanut butter", material: "smooth paste", interior: "creamy", tool: "spoon", action: "scoops first bit", debris: "perfect curl" },
+            { name: "ice key", material: "clear ice", interior: "water", tool: "lock", action: "turns", debris: "broken ice tip" },
+            { name: "moss", material: "green moss carpet", interior: "spongy organic", tool: "palm", action: "presses flat", debris: "slow rebound" },
+            { name: "garlic", material: "white glass", interior: "glass bead cloves", tool: "knife flat", action: "smashes", debris: "scattering glass cloves" },
+            { name: "clay pot", material: "wet clay", interior: "spinning mud", tool: "thumb", action: "pushes center", debris: "spiraling clay wall" },
+            { name: "chocolate bulb", material: "white chocolate", interior: "hollow", tool: "lamp socket", action: "screws in", debris: "melting drip" },
+            { name: "foam rainbow", material: "floral foam", interior: "color gradient", tool: "knife", action: "drags down", debris: "color smear" },
+            { name: "lime", material: "green glass", interior: "liquid glass", tool: "hand", action: "squeezes", debris: "dripping glass slime" },
+            { name: "bread basket", material: "dough", interior: "yeast", tool: "oven", action: "bakes", debris: "rising dough" },
+            { name: "mouse", material: "silicone jelly", interior: "jiggle", tool: "finger", action: "clicks", debris: "sinking finger" },
+            { name: "dusty table", material: "grey dust", interior: "black surface", tool: "finger", action: "wipes line", debris: "clean path" },
+            { name: "raspberry", material: "red glass", interior: "bumps", tool: "table", action: "rolls", debris: "rumbling sound" },
+            { name: "post-its", material: "paper stack", interior: "adhesive", tool: "hand", action: "peels all", debris: "accordion paper" },
+            { name: "croissant", material: "ceramic", interior: "hollow clay", tool: "floor", action: "drops", debris: "ceramic shards" },
+            { name: "oobleck", material: "cornstarch", interior: "non-newtonian", tool: "fist", action: "punches", debris: "solid impact" },
+            { name: "broccoli", material: "green glass", interior: "glass", tool: "knife", action: "cuts florets", debris: "chime sounds" },
+            { name: "latte art", material: "coffee foam", interior: "liquid", tool: "spoon", action: "swirls", debris: "mixed pattern" },
+            { name: "soap golf ball", material: "white soap", interior: "soap", tool: "knife", action: "carves", debris: "soap ribbons" },
+            { name: "aerogel", material: "blue smoke solid", interior: "insulator", tool: "flame", action: "holds under", debris: "no melting" },
+            { name: "asparagus", material: "glass", interior: "fibers", tool: "hand", action: "snaps", debris: "sharp break" },
+            { name: "water balloon", material: "rubber", interior: "water", tool: "pin", action: "pops", debris: "standing water shape" },
+            { name: "gummy screwdriver", material: "candy", interior: "chewy", tool: "screw", action: "turns", debris: "twisting handle" },
+            { name: "bed of nails", material: "sharp nails", interior: "metal", tool: "balloon", action: "rests on top", debris: "no pop" },
+            { name: "carrot", material: "orange glass", interior: "glass", tool: "knife", action: "chops fast", debris: "flying glass discs" },
+            { name: "copper wire", material: "metal", interior: "wire", tool: "hand", action: "pulls end", debris: "spinning spool" },
+            { name: "gingerbread wall", material: "cookie", interior: "icing", tool: "fist", action: "punches", debris: "cookie crumbs" },
+            { name: "dried paint", material: "acrylic", interior: "plastic", tool: "hand", action: "peels", debris: "paint skin" },
+            { name: "cauliflower", material: "white glass", interior: "fractal glass", tool: "hand", action: "breaks", debris: "cracking ice sound" },
+            { name: "coin tower", material: "metal coins", interior: "stack", tool: "ruler", action: "swipes bottom", debris: "tower stays standing" },
+            { name: "banana slug", material: "sticky yellow slime", interior: "mucus", tool: "finger", action: "touches it", debris: "slime trail" },
+            { name: "velvet pillow", material: "reversible sequins fabric", interior: "cotton", tool: "palm", action: "swipes against grain", debris: "color change" },
+            { name: "artichoke", material: "green glass", interior: "glass heart", tool: "hand", action: "pulls leaves", debris: "scraping sound" },
+            { name: "graphite block", material: "pure carbon", interior: "black solid", tool: "rough paper", action: "draws heavily", debris: "thick black mark" },
+            { name: "tooth", material: "white marshmallow", interior: "fluffy sugar", tool: "fingers", action: "squeezes", debris: "soft bounce back" },
+            { name: "ink water", material: "clear water", interior: "liquid", tool: "dropper", action: "drops ink", debris: "smoky tendrils" },
+            { name: "zucchini", material: "green glass", interior: "glass", tool: "spiralizer", action: "turns", debris: "glass ribbons" },
+            { name: "house of cards", material: "paper cards", interior: "air", tool: "breath", action: "blows gently", debris: "cascading cards" },
+            { name: "chocolate feather", material: "white chocolate", interior: "chocolate", tool: "hand", action: "holds it", debris: "melting liquid" },
+            { name: "soap bubble wall", material: "soap film", interior: "air", tool: "wet hand", action: "passes through", debris: "wobbling film" },
+            { name: "sweet potato", material: "orange glass", interior: "stained glass", tool: "knife", action: "slices", debris: "glowing shards" },
+            { name: "burning match", material: "wood", interior: "carbon", tool: "hand", action: "holds it", debris: "curling char" },
+            { name: "snail shell", material: "fragile sugar", interior: "hollow", tool: "hand", action: "crushes", debris: "fine white powder" },
+            { name: "snow field", material: "miniature snow", interior: "powder", tool: "stamp", action: "presses", debris: "perfect footprint" },
+            { name: "radish", material: "red glass", interior: "white glass", tool: "teeth", action: "bites", debris: "spiderweb cracks" },
+            { name: "gum stretch", material: "pink gum", interior: "elastic", tool: "finger", action: "pokes hole", debris: "perfect circle" },
+            { name: "chocolate scissors", material: "dark chocolate", interior: "chocolate", tool: "paper", action: "tries to cut", debris: "snapped blades" },
+            { name: "spaghetti bundle", material: "dry pasta", interior: "solid", tool: "hands", action: "snaps", debris: "flying pasta shards" },
+            { name: "lettuce", material: "green glass sheets", interior: "glass layers", tool: "hand", action: "peels leaf", debris: "wavy glass clink" },
+            { name: "neon tube", material: "glass", interior: "gas", tool: "hand", action: "bends", debris: "flickering light" },
+            { name: "silicone ear", material: "soft silicone", interior: "solid", tool: "finger", action: "flicks", debris: "wobbling flesh" },
+            { name: "boba pearls", material: "black tapioca", interior: "chewy starch", tool: "hand", action: "runs through", debris: "sticky clicking" },
+            { name: "cucumber", material: "green glass", interior: "water", tool: "mallet", action: "smashes", debris: "wet glass splash" },
+            { name: "oil paint palette", material: "thick paint", interior: "pigment", tool: "knife", action: "mixes colors", debris: "marbled smear" },
+            { name: "sugar rope", material: "pulled sugar", interior: "satin candy", tool: "hand", action: "pulls", debris: "glossy snap" },
+            { name: "water sphere", material: "floating water", interior: "liquid", tool: "finger", action: "pokes", debris: "3D ripples" },
+            { name: "beet", material: "purple glass", interior: "blood red glass", tool: "knife", action: "cuts", debris: "dark red shards" },
+            { name: "hot ball foam", material: "floral foam", interior: "foam", tool: "nickel ball", action: "pushes in", debris: "smoking tunnel" },
+            { name: "wafer butterfly", material: "edible paper", interior: "starch", tool: "wind", action: "blows", debris: "dust disintegration" },
+            { name: "magnetic putty", material: "black putty", interior: "magnetic particles", tool: "magnet", action: "places near", debris: "engulfed magnet" },
+            { name: "kale leaf", material: "green glass", interior: "glass", tool: "fist", action: "crunches", debris: "thin ice sound" },
+            { name: "face mask", material: "dried clay", interior: "pore texture", tool: "hand", action: "peels off", debris: "single piece" },
+            { name: "candy gem", material: "hard candy", interior: "sugar", tool: "tongue", action: "licks", debris: "glossy surface" },
+            { name: "spinning top", material: "wood", interior: "solid", tool: "hand", action: "stops it", debris: "friction burn" },
+            { name: "celery", material: "green glass", interior: "glass fibers", tool: "hand", action: "snaps", debris: "stringy glass" },
+            { name: "dripping faucet", material: "water", interior: "liquid", tool: "camera", action: "freezes time", debris: "suspended droplet" },
+            { name: "chocolate leaf", material: "tempered chocolate", interior: "cocoa butter", tool: "hand", action: "snaps", debris: "crisp break" },
+            { name: "whipping cream", material: "heavy cream", interior: "fat", tool: "whisk", action: "whips fast", debris: "stiff peaks" },
+            { name: "acorn squash", material: "hard glass", interior: "glass", tool: "concrete", action: "drops on", debris: "thick shards" },
+            { name: "candle wick", material: "burnt cotton", interior: "ash", tool: "fingers", action: "pinches out", debris: "smoke trail" },
+            { name: "soap donut", material: "pink soap", interior: "soap", tool: "knife", action: "cuts", debris: "coconut-like flakes" },
+            { name: "honey stream", material: "honey", interior: "liquid", tool: "scissors", action: "cuts", debris: "merging liquid" },
+            { name: "pea pod", material: "glass", interior: "glass marbles", tool: "hand", action: "squeezes", debris: "rolling marbles" },
+            { name: "dirty window", material: "soap suds", interior: "glass", tool: "squeegee", action: "wipes", debris: "clear path" },
+            { name: "chocolate shell", material: "white chocolate", interior: "marshmallow", tool: "hot milk", action: "pours over", debris: "melting reveal" },
+            { name: "ferrofluid spike", material: "magnetic oil", interior: "liquid", tool: "finger", action: "touches", debris: "liquid bridge" },
+            { name: "brussels sprout", material: "green glass", interior: "dense glass", tool: "knife", action: "cuts half", debris: "solid knot" },
+            { name: "rubber band ball", material: "rubber bands", interior: "tension", tool: "knife", action: "cuts deep", debris: "flying bands" },
+            { name: "gummy lego", material: "red gummy", interior: "gelatin", tool: "foot", action: "steps on", debris: "squished brick" },
+            { name: "paper cut", material: "construction paper", interior: "fiber", tool: "razor", action: "slices", debris: "clean separation" },
+            { name: "habanero", material: "orange glass", interior: "spicy crystals", tool: "knife", action: "slices", debris: "jagged crystals" },
+            { name: "lake skip", material: "water", interior: "depth", tool: "stone", action: "skips", debris: "concentric ripples" },
+            { name: "rock candy quartz", material: "sugar crystals", interior: "pink sugar", tool: "teeth", action: "bites", debris: "sugar flying" },
+            { name: "ice reverse", material: "water puddle", interior: "liquid", tool: "time", action: "rewinds", debris: "forming ice cube" },
+            { name: "ginger root", material: "glass", interior: "glass", tool: "hand", action: "snaps knob", debris: "uneven break" },
+            { name: "newtons cradle", material: "steel balls", interior: "metal", tool: "hand", action: "releases ball", debris: "kinetic click" },
+            { name: "foam baguette", material: "memory foam", interior: "air cells", tool: "hand", action: "squeezes flat", debris: "slow rise" },
+            { name: "fountain pen", material: "metal nib", interior: "ink", tool: "paper", action: "writes", debris: "ink spread" },
+            { name: "okra", material: "green glass", interior: "hollow stars", tool: "knife", action: "slices", debris: "star pieces" },
+            { name: "steel wool", material: "metal fibers", interior: "fire", tool: "wire", action: "spins", debris: "flying sparks" },
+            { name: "geode cake", material: "velvet cake", interior: "rock candy", tool: "knife", action: "cuts", debris: "crunchy soft mix" },
+            { name: "vacuum marshmallow", material: "marshmallow", interior: "air", tool: "vacuum", action: "removes air", debris: "expansion" },
+            { name: "leek", material: "glass gradient", interior: "glass layers", tool: "knife", action: "chops", debris: "tinkling slices" }
+        ];
+
+        // Surfaces array to vary the "centered on..." part
+        const surfaces = [
+            "a wooden cutting board", "a pristine white marble surface", "a polished black mirror", 
+            "a textured slate table", "a rustic oak table", "a backlit glass table", 
+            "a matte black photography background", "a sheet of stainless steel", "a bed of soft velvet"
+        ];
+
+        // --- UTILS ---
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function setQuantity(qty) {
+            currentQuantity = qty;
+            document.querySelectorAll('.qty-btn').forEach(btn => {
+                const isSelected = parseInt(btn.dataset.value) === qty;
+                if (isSelected) {
+                    btn.classList.remove('bg-dark', 'text-gray-300', 'border-gray-600');
+                    btn.classList.add('bg-accent', 'text-dark', 'border-accent', 'font-bold', 'shadow-[0_0_15px_rgba(56,189,248,0.3)]');
+                } else {
+                    btn.classList.add('bg-dark', 'text-gray-300', 'border-gray-600');
+                    btn.classList.remove('bg-accent', 'text-dark', 'border-accent', 'font-bold', 'shadow-[0_0_15px_rgba(56,189,248,0.3)]');
+                }
+            });
+            const customInput = document.getElementById('custom-qty');
+            if (![10, 50, 100, 300].includes(qty)) {
+                customInput.classList.add('border-accent', 'ring-1', 'ring-accent');
+            } else {
+                customInput.value = '';
+                customInput.classList.remove('border-accent', 'ring-1', 'ring-accent');
+            }
+        }
+
+        function selectCustom() {
+            const val = parseInt(document.getElementById('custom-qty').value);
+            if (val && val > 0) {
+                document.querySelectorAll('.qty-btn').forEach(btn => {
+                    btn.classList.add('bg-dark', 'text-gray-300', 'border-gray-600');
+                    btn.classList.remove('bg-accent', 'text-dark', 'border-accent', 'font-bold', 'shadow-[0_0_15px_rgba(56,189,248,0.3)]');
+                });
+                currentQuantity = val;
+            }
+        }
+
+        // --- AI API FUNCTIONS ---
+
+        async function callGemini(systemPrompt, userPrompt) {
+            if (!apiKey) {
+                throw new Error("API Key is missing. The environment should provide it.");
+            }
+
+            // Retry logic
+            const delays = [1000, 2000, 4000, 8000, 16000];
+            let lastError;
+
+            for (let i = 0; i <= delays.length; i++) {
+                try {
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            contents: [{
+                                parts: [{ text: userPrompt }]
+                            }],
+                            systemInstruction: {
+                                parts: [{ text: systemPrompt }]
+                            }
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({}));
+                        throw new Error(`Gemini API Error: ${response.status} ${response.statusText} - ${JSON.stringify(errorData)}`);
+                    }
+
+                    const result = await response.json();
+                    return result.candidates?.[0]?.content?.parts?.[0]?.text || "Erreur de génération.";
+
+                } catch (error) {
+                    lastError = error;
+                    if (i < delays.length) {
+                        await new Promise(resolve => setTimeout(resolve, delays[i]));
+                    }
+                }
+            }
+            throw lastError;
+        }
+
+        async function generateAIUniquePrompt() {
+            const btn = document.getElementById('ai-btn');
+            const spinner = document.getElementById('ai-spinner');
+            const icon = btn.querySelector('.fa-wand-magic-sparkles');
+            
+            // Loading State
+            btn.disabled = true;
+            spinner.classList.remove('hidden');
+            icon.classList.add('hidden');
+            
+            // Error handling UI
+            const errorContainer = document.getElementById('error-container');
+            errorContainer.classList.add('hidden');
+
+            const systemPrompt = `You are an expert Oddly Satisfying video prompter. Create a SINGLE, highly creative, and unique video prompt.
+            Constraint Checklist & Confidence Score:
+            1. Object: Must be an everyday item made of an unexpected material (e.g., glass, cake, soap, slime, ice, etc.).
+            2. Format: "Hyper-realistic cinematic close-up of [OBJECT description]... The object is centered on [SURFACE]... A human hand with a visible '@aishortlab' tattoo on the wrist holding a [TOOL]... In slow motion, the [TOOL] [ACTION]... The inside reveals [INTERIOR]... [DEBRIS] scatter... Then the [TOOL] performs a second interaction... ASMR satisfying sounds only, no talking, no music."
+            3. Tone: Professional, cinematic, satisfying.
+            4. Output: ONLY the prompt text string. No conversational filler.`;
+
+            const userPrompt = "Generate one unique satisfying video prompt now.";
+
+            try {
+                const text = await callGemini(systemPrompt, userPrompt);
+                
+                // Add to list at the beginning
+                generatedPrompts.unshift(text);
+                
+                // Render with special styling for the new first item
+                renderPrompts(true); 
+                
+                // Increment counter
+                document.getElementById('count-display').innerText = generatedPrompts.length;
+                
+                showToast("Scénario IA Généré !");
+
+            } catch (error) {
+                console.error(error);
+                errorContainer.classList.remove('hidden');
+                document.getElementById('error-message').innerText = "Erreur IA: " + error.message;
+            } finally {
+                // Reset State
+                btn.disabled = false;
+                spinner.classList.add('hidden');
+                icon.classList.remove('hidden');
+            }
+        }
+
+        async function remixPrompt(index) {
+            const originalPrompt = generatedPrompts[index];
+            const card = document.querySelectorAll('.prompt-card')[index];
+            const remixBtn = card.querySelector('.remix-btn i');
+            
+            // Local loading state
+            remixBtn.className = "fa-solid fa-spinner fa-spin";
+
+            const systemPrompt = `You are an AI remixer for video prompts. Take the user's prompt and REWRITE it with a completely different material and interior for the same object, or a different object entirely but keeping the same satisfying vibe.
+            Keep the format: "Hyper-realistic cinematic close-up... @aishortlab tattoo... ASMR..."
+            Output ONLY the new prompt text.`;
+
+            try {
+                const newText = await callGemini(systemPrompt, `Remix this prompt: ${originalPrompt}`);
+                generatedPrompts[index] = newText;
+                
+                // Update specific card
+                const p = card.querySelector('p');
+                p.classList.add('text-gradient-gemini', 'font-bold');
+                p.innerText = newText;
+                
+                showToast("Prompt remixé !");
+            } catch (error) {
+                showToast("Erreur remix");
+                console.error(error);
+            } finally {
+                remixBtn.className = "fa-solid fa-wand-sparkles";
+            }
+        }
+
+        // --- STANDARD GENERATION ENGINE ---
+
+        function generatePrompts() {
+            generatedPrompts = [];
+            const container = document.getElementById('prompts-container');
+            container.innerHTML = '';
+            document.getElementById('error-container').classList.add('hidden');
+
+            let poolObjects = [];
+            let poolSurfaces = [];
+
+            while (poolObjects.length < currentQuantity) {
+                poolObjects = poolObjects.concat(shuffleArray([...objects]));
+            }
+            poolObjects = poolObjects.slice(0, currentQuantity);
+
+            while (poolSurfaces.length < currentQuantity) {
+                poolSurfaces = poolSurfaces.concat(shuffleArray([...surfaces]));
+            }
+            poolSurfaces = poolSurfaces.slice(0, currentQuantity);
+
+            for (let i = 0; i < currentQuantity; i++) {
+                const obj = poolObjects[i];
+                const surface = poolSurfaces[i];
+
+                let prompt = `Hyper-realistic cinematic close-up of a ${obj.name} with realistic texture made of ${obj.material}, with pristine surface, under professional studio lighting. `;
+                prompt += `The ${obj.name.split(' ').pop()} is centered on ${surface}, glowing subtly. `;
+                prompt += `A human hand with a visible '@aishortlab' tattoo on the wrist holding a ${obj.tool} hovers above the object. `;
+                prompt += `In slow motion, the ${obj.tool} ${obj.action}. `;
+                prompt += `The inside reveals ${obj.interior}, fully detailed as in real life. `;
+                prompt += `${obj.debris.charAt(0).toUpperCase() + obj.debris.slice(1)} scatter lightly. `;
+                prompt += `Then the ${obj.tool} performs a second interaction. `;
+                prompt += `ASMR satisfying sounds only, no talking, no music.`;
+
+                generatedPrompts.push(prompt);
+            }
+
+            document.getElementById('count-display').innerText = currentQuantity;
+            renderPrompts();
+        }
+
+        function renderPrompts(highlightFirst = false) {
+            const container = document.getElementById('prompts-container');
+            container.innerHTML = '';
+            
+            const limit = Math.min(generatedPrompts.length, 50); // Increased render limit slightly
+            
+            generatedPrompts.slice(0, limit).forEach((text, i) => {
+                const card = document.createElement('div');
+                const isFirstAI = highlightFirst && i === 0;
+                
+                card.className = `bg-card p-4 rounded-xl border border-gray-700 prompt-card relative group animate-fade-in flex flex-col justify-between ${isFirstAI ? 'border-gemini shadow-[0_0_15px_rgba(139,92,246,0.2)]' : ''}`;
+                card.style.animationDelay = `${i * 0.03}s`;
+                
+                card.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="text-xs font-mono ${isFirstAI ? 'text-gemini font-bold' : 'text-gray-500'}">
+                                ${isFirstAI ? '✨ IA GENERATED' : `PROMPT #${i + 1}`}
+                            </span>
+                            <div class="flex gap-2">
+                                <button onclick="remixPrompt(${i})" class="remix-btn text-gray-400 hover:text-gemini transition-colors" title="Remixer avec IA">
+                                    <i class="fa-solid fa-wand-sparkles"></i>
+                                </button>
+                                <button onclick="copyToClipboard(${i})" class="text-gray-400 hover:text-accent transition-colors" title="Copier">
+                                    <i class="fa-regular fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-300 leading-relaxed ${isFirstAI ? 'text-white' : ''}">
+                            ${text}
+                        </p>
+                    </div>
+                    <div class="mt-3 flex gap-2 text-xs text-gray-500">
+                        <span class="bg-dark px-2 py-1 rounded">@aishortlab</span>
+                        <span class="bg-dark px-2 py-1 rounded">ASMR</span>
+                        ${isFirstAI ? '<span class="bg-gemini/20 text-gemini px-2 py-1 rounded border border-gemini/50">Unique</span>' : ''}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+            
+            if (generatedPrompts.length > limit) {
+                const more = document.createElement('div');
+                more.className = 'col-span-1 md:col-span-2 lg:col-span-3 text-center py-4 text-gray-500 italic animate-fade-in';
+                more.innerHTML = `... et ${generatedPrompts.length - limit} autres prompts disponibles dans le fichier .txt`;
+                container.appendChild(more);
+            }
+        }
+
+        function downloadPrompts() {
+            if (generatedPrompts.length === 0) generatePrompts();
+            
+            const fileContent = generatedPrompts.join('\n\n');
+            const blob = new Blob([fileContent], { type: 'text/plain' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `prompts_satisfaisants_${generatedPrompts.length}_mixed.txt`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            showToast("Fichier téléchargé !");
+        }
+
+        function copyToClipboard(index) {
+            const text = generatedPrompts[index];
+            navigator.clipboard.writeText(text).then(() => {
+                showToast("Copié !");
+            });
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').innerText = msg;
+            toast.classList.remove('translate-y-20');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20');
+            }, 2000);
+        }
+
+        // Init on load
+        window.onload = function() {
+            setQuantity(300);
+            generatePrompts();
+        };
+
+    </script>
+</body>
+</html>
