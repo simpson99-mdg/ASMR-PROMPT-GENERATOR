@@ -53,6 +53,15 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
+        
+        /* Custom Select Styles */
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2338bdf8%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.5rem top 50%;
+            background-size: 0.65rem auto;
+        }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
@@ -66,7 +75,7 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-bold text-white tracking-tight">Générateur Aléatoire <span class="text-xs bg-gemini/20 text-gemini border border-gemini/50 px-2 py-0.5 rounded ml-2">AI Powered</span></h1>
-                    <p class="text-xs text-gray-400">Pour <span class="text-accent">@aishortlab</span> • Génération unique par appareil</p>
+                    <p class="text-xs text-gray-400">Pour <span class="text-accent">@aishortlab</span> • Filtres Doubles & IA</p>
                 </div>
             </div>
             
@@ -87,29 +96,76 @@
             
             <!-- Controls Toolbar -->
             <div class="mb-8 bg-card/80 backdrop-blur-md p-4 rounded-2xl border border-gray-700 shadow-xl">
-                <div class="flex flex-col md:flex-row gap-6 items-center justify-between">
+                <div class="flex flex-col gap-6">
                     
-                    <!-- Quantity Selector -->
-                    <div class="flex flex-col gap-2 w-full md:w-auto">
-                        <label class="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                            <i class="fa-solid fa-hashtag"></i> Quantité
-                        </label>
-                        <div class="flex flex-wrap gap-2">
-                            <button onclick="setQuantity(10)" class="qty-btn bg-dark hover:bg-gray-700 border border-gray-600 text-gray-300 px-4 py-2 rounded-lg text-sm font-medium transition-all" data-value="10">10</button>
-                            <button onclick="setQuantity(50)" class="qty-btn bg-dark hover:bg-gray-700 border border-gray-600 text-gray-300 px-4 py-2 rounded-lg text-sm font-medium transition-all" data-value="50">50</button>
-                            <button onclick="setQuantity(100)" class="qty-btn bg-dark hover:bg-gray-700 border border-gray-600 text-gray-300 px-4 py-2 rounded-lg text-sm font-medium transition-all" data-value="100">100</button>
-                            <button onclick="setQuantity(300)" class="qty-btn bg-accent text-dark border border-accent font-bold px-4 py-2 rounded-lg text-sm transition-all shadow-[0_0_15px_rgba(56,189,248,0.3)]" data-value="300">300</button>
-                            
-                            <div class="relative flex items-center ml-2">
-                                <input type="number" id="custom-qty" placeholder="Perso" min="1" max="1000" class="w-20 bg-dark border border-gray-600 text-white px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all" oninput="selectCustom()">
+                    <!-- Filters Row -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 border-b border-gray-700/50 pb-4">
+                        <!-- Action Type Filter -->
+                        <div class="flex flex-col gap-2">
+                            <label class="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                                <i class="fa-solid fa-hand-scissors"></i> Type d'Action (ASMR)
+                            </label>
+                            <div class="flex gap-2">
+                                <select id="action-filter" class="w-full bg-dark border border-gray-600 text-white px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all cursor-pointer hover:border-gray-500">
+                                    <option value="all">🎲 Aléatoire</option>
+                                    <option value="cut">🔪 Coupe / Cut</option>
+                                    <option value="crush">🔨 Smash / Crush</option>
+                                    <option value="poke">point_right: Poke / Toucher</option>
+                                    <option value="scoop">🥄 Scoop / Creuser</option>
+                                </select>
+                                <select id="action-filter-2" class="w-full bg-dark border border-gray-600 text-white/80 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all cursor-pointer hover:border-gray-500 border-dashed">
+                                    <option value="none">➕ (Aucun)</option>
+                                    <option value="cut">🔪 Coupe / Cut</option>
+                                    <option value="crush">🔨 Smash / Crush</option>
+                                    <option value="poke">point_right: Poke / Toucher</option>
+                                    <option value="scoop">🥄 Scoop / Creuser</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Material Type Filter -->
+                        <div class="flex flex-col gap-2">
+                            <label class="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                                <i class="fa-solid fa-cubes"></i> Matière / Projet
+                            </label>
+                            <div class="flex gap-2">
+                                <select id="material-filter" class="w-full bg-dark border border-gray-600 text-white px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all cursor-pointer hover:border-gray-500">
+                                    <option value="all">🎲 Aléatoire</option>
+                                    <option value="glass">💎 Verre / Glace</option>
+                                    <option value="soap">🧼 Savon / Cire</option>
+                                    <option value="sand">⏳ Sable / Poudre</option>
+                                    <option value="slime">💧 Slime / Gelée</option>
+                                    <option value="food">🍰 Gâteau / Food</option>
+                                </select>
+                                <select id="material-filter-2" class="w-full bg-dark border border-gray-600 text-white/80 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all cursor-pointer hover:border-gray-500 border-dashed">
+                                    <option value="none">➕ (Aucun)</option>
+                                    <option value="glass">💎 Verre / Glace</option>
+                                    <option value="soap">🧼 Savon / Cire</option>
+                                    <option value="sand">⏳ Sable / Poudre</option>
+                                    <option value="slime">💧 Slime / Gelée</option>
+                                    <option value="food">🍰 Gâteau / Food</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Quantity Selector -->
+                        <div class="flex flex-col gap-2">
+                            <label class="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                                <i class="fa-solid fa-hashtag"></i> Quantité
+                            </label>
+                            <div class="flex gap-2 h-[42px]">
+                                <button onclick="setQuantity(10)" class="qty-btn bg-dark hover:bg-gray-700 border border-gray-600 text-gray-300 px-3 rounded-lg text-sm font-medium transition-all flex-1" data-value="10">10</button>
+                                <button onclick="setQuantity(50)" class="qty-btn bg-dark hover:bg-gray-700 border border-gray-600 text-gray-300 px-3 rounded-lg text-sm font-medium transition-all flex-1" data-value="50">50</button>
+                                <button onclick="setQuantity(300)" class="qty-btn bg-accent text-dark border border-accent font-bold px-3 rounded-lg text-sm transition-all shadow-[0_0_15px_rgba(56,189,248,0.3)] flex-1" data-value="300">300</button>
+                                <input type="number" id="custom-qty" placeholder="#" min="1" max="1000" class="w-16 bg-dark border border-gray-600 text-white px-2 rounded-lg text-sm text-center focus:outline-none focus:border-accent h-full" oninput="selectCustom()">
                             </div>
                         </div>
                     </div>
 
-                    <!-- Actions -->
-                    <div class="flex flex-col md:flex-row gap-3 w-full md:w-auto">
+                    <!-- Actions Row -->
+                    <div class="flex flex-col md:flex-row gap-3 items-center justify-between">
                         <!-- AI Button -->
-                        <button onclick="generateAIUniquePrompt()" id="ai-btn" class="relative group overflow-hidden bg-dark border border-gemini/50 text-white font-bold py-3 px-6 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 hover:border-gemini hover:shadow-[0_0_20px_rgba(139,92,246,0.3)]">
+                        <button onclick="generateAIUniquePrompt()" id="ai-btn" class="w-full md:w-auto relative group overflow-hidden bg-dark border border-gemini/50 text-white font-bold py-3 px-6 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 hover:border-gemini hover:shadow-[0_0_20px_rgba(139,92,246,0.3)]">
                             <div class="absolute inset-0 bg-gradient-to-r from-transparent via-gemini/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
                             <i class="fa-solid fa-wand-magic-sparkles text-gemini group-hover:text-white transition-colors"></i>
                             <span>Scénario Unique (IA)</span>
@@ -117,9 +173,9 @@
                         </button>
 
                         <!-- Standard Generate Button -->
-                        <button onclick="generatePrompts()" class="bg-gradient-to-r from-accent to-blue-500 hover:from-sky-400 hover:to-blue-400 text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-sky-900/40 transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-3">
-                            <i class="fa-solid fa-arrows-rotate"></i>
-                            Générer Aléatoire
+                        <button onclick="generatePrompts()" class="w-full md:w-auto flex-1 bg-gradient-to-r from-accent to-blue-500 hover:from-sky-400 hover:to-blue-400 text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-sky-900/40 transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-3">
+                            <i class="fa-solid fa-filter"></i>
+                            Appliquer & Générer
                         </button>
                     </div>
                 </div>
@@ -361,6 +417,28 @@
             return array;
         }
 
+        function getTags(obj) {
+            let mat = 'other';
+            let act = 'other';
+            const m = obj.material.toLowerCase() + " " + obj.name.toLowerCase();
+            const a = obj.action.toLowerCase();
+
+            // Material logic
+            if (m.includes('glass') || m.includes('ice') || m.includes('crystal') || m.includes('gem')) mat = 'glass';
+            else if (m.includes('soap') || m.includes('wax') || m.includes('foam')) mat = 'soap';
+            else if (m.includes('sand') || m.includes('powder') || m.includes('chalk') || m.includes('dust')) mat = 'sand';
+            else if (m.includes('slime') || m.includes('liquid') || m.includes('water') || m.includes('fluid') || m.includes('paint') || m.includes('jelly')) mat = 'slime';
+            else if (m.includes('cake') || m.includes('chocolate') || m.includes('candy') || m.includes('food') || m.includes('sugar') || m.includes('fruit') || m.includes('vegetable') || m.includes('berry')) mat = 'food';
+
+            // Action logic
+            if (a.includes('slice') || a.includes('cut') || a.includes('chop') || a.includes('saw') || a.includes('shave') || a.includes('peel')) act = 'cut';
+            else if (a.includes('crush') || a.includes('smash') || a.includes('crack') || a.includes('break') || a.includes('snap') || a.includes('drop') || a.includes('pop')) act = 'crush';
+            else if (a.includes('scoop') || a.includes('dig')) act = 'scoop';
+            else if (a.includes('press') || a.includes('poke') || a.includes('touch') || a.includes('squeeze') || a.includes('stretch')) act = 'poke';
+
+            return { mat, act };
+        }
+
         function setQuantity(qty) {
             currentQuantity = qty;
             document.querySelectorAll('.qty-btn').forEach(btn => {
@@ -526,11 +604,52 @@
             container.innerHTML = '';
             document.getElementById('error-container').classList.add('hidden');
 
+            const selectedAction1 = document.getElementById('action-filter').value;
+            const selectedAction2 = document.getElementById('action-filter-2').value;
+            const selectedMaterial1 = document.getElementById('material-filter').value;
+            const selectedMaterial2 = document.getElementById('material-filter-2').value;
+
+            // 1. Filter Objects
+            let filteredObjects = objects.filter(obj => {
+                const tags = getTags(obj);
+                
+                // Action Filter Logic (Primary OR Secondary)
+                let actionMatch = false;
+                if (selectedAction1 === 'all') {
+                    actionMatch = true;
+                } else {
+                    actionMatch = (tags.act === selectedAction1);
+                    if (!actionMatch && selectedAction2 !== 'none') {
+                        actionMatch = (tags.act === selectedAction2);
+                    }
+                }
+
+                // Material Filter Logic (Primary OR Secondary)
+                let materialMatch = false;
+                if (selectedMaterial1 === 'all') {
+                    materialMatch = true;
+                } else {
+                    materialMatch = (tags.mat === selectedMaterial1);
+                    if (!materialMatch && selectedMaterial2 !== 'none') {
+                        materialMatch = (tags.mat === selectedMaterial2);
+                    }
+                }
+
+                return actionMatch && materialMatch;
+            });
+
+            // Fallback if filter is too strict
+            if (filteredObjects.length === 0) {
+                filteredObjects = objects; // Fallback to all
+                document.getElementById('error-container').classList.remove('hidden');
+                document.getElementById('error-message').innerText = "Aucun objet ne correspond à cette combinaison exacte. Mode aléatoire activé.";
+            }
+
             let poolObjects = [];
             let poolSurfaces = [];
 
             while (poolObjects.length < currentQuantity) {
-                poolObjects = poolObjects.concat(shuffleArray([...objects]));
+                poolObjects = poolObjects.concat(shuffleArray([...filteredObjects]));
             }
             poolObjects = poolObjects.slice(0, currentQuantity);
 
